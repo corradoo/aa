@@ -37,7 +37,7 @@ def str_to_float(s, encoding="utf-8"):
     return bytes_to_float(s.encode(encoding))
 
 
-def get_hash(h, m):
+def get_hash_m(h, m):
     b = m.encode(encoding="utf-8")
     return float(unpack('L', h(b).digest()[:8])[0]) / 2**64
 
