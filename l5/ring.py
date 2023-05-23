@@ -85,7 +85,7 @@ def find_max(n:int):
         mp = m
     print(m)
 
-# find_max(5)
+find_max(7)
 p9 = (0, 7, 6, 5, 4, 3, 2, 1,0)
 p10 = (0, 8, 7, 6, 5, 4, 3, 2, 1,0)
 p11 = (0, 9,8, 7, 6, 5, 4, 3, 2, 1,0)
@@ -98,5 +98,5 @@ p13 = (0, 11,10, 9,8, 7, 6, 5, 4, 3, 2, 1,0)
 # print(f"10 -> {path(p10)}")
 # lookup = {}
 # print(f"11 -> {path(p11)}")
-lookup = {}
-print(f"13 -> {path(p13)}")
+# lookup = {}
+# print(f"13 -> {path(p13)}")

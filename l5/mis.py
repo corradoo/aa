@@ -1,72 +1,81 @@
 import networkx as nx
 import matplotlib.pyplot as plt
 
+colors = {
+    "free": "lightblue",
+    "locked": "green",
+    "blocked": "gray",
+    "conflict": "red",
+}
+
+states = ["free", "locked", "blocked", "conflict"]
+
 
 class Node:
-    def __init__(self, id):
+    def __init__(self, id, st="free"):
         self.id = id
-        self.status = "free"
+        self.status = st
         self.independent_set = set()
 
-    def send_message(self, neighbor):
-        # Send current status and independent set to neighbor
-        return self.status, self.independent_set
 
-    def receive_message(self, neighbor_status, neighbor_independent_set):
-        print(f"Node {self.id} status: {self.status}")
-        # Update independent set based on neighbor's set
-        if len(neighbor_independent_set) > len(self.independent_set):
-            self.independent_set = neighbor_independent_set.copy()
-
-    def update_independent_set(self, graph):
-        # Check if adding itself to the independent set is possible without conflicts
-        neighbors = graph[self.id]
-        for neighbor in neighbors:
-            if neighbor in self.independent_set:
-                self.status = "blocked"
-                return
-        self.independent_set.add(self.id)
-        self.status = "locked"
+def get_state(graph, node_id, independent_set):
+    if independent_set[node_id]:
+        if all(
+            [independent_set[n] == False for n in graph[node_id]]
+        ):  # n in S all Neigh not in S
+            return "locked"
+        else:  # n in S 1< Neigh in S
+            return "conflict"
+    else:
+        if all(
+            [independent_set[n] == False for n in graph[node_id]]
+        ):  # n NOT in S NO Neigh in S
+            return "free"
+        else:  # n NOT in S 1< Neigh in S
+            return "blocked"
 
 
 def self_stabilizing_max_independent_set(graph):
+    # Init nodes
+    num_nodes = len(graph)
     nodes = []
-    for node_id in range(len(graph)):
-        nodes.append(Node(node_id))
+    independent_set = [random.random() < 0.5 for _ in range(num_nodes)]
+    # independent_set = [False]*num_nodes
+
+    for node_id in range(num_nodes):
+        print(f"Node {node_id} -> {get_state(graph,node_id,independent_set)}")
+        nodes.append(Node(node_id, get_state(graph, node_id, independent_set)))
 
     rounds = 0
     while True:
         rounds += 1
-        stable = True
 
-        for node in nodes:
-            # Node already in IS
-            # if node.status == 'passive':
-            #     continue
+        # node = nodes[rounds%num_nodes]
+        node = random.choice(nodes)
+        visualize(graph, nodes, rounds, node.id)
 
-            messages = []
-            for neighbor in graph[node.id]:
-                neighbor_status, neighbor_independent_set = nodes[
-                    neighbor
-                ].send_message(node.id)
-                messages.append((neighbor_status, neighbor_independent_set))
-            # breakpoint()
-            for neighbor_status, neighbor_independent_set in messages:
-                node.receive_message(neighbor_status, neighbor_independent_set)
+        node.status = get_state(graph, node.id, independent_set)
+        if "conflict" == node.status:
+            independent_set[node.id] = False
+        elif "free" == node.status:
+            independent_set[node.id] = True
+        node.status = get_state(graph, node.id, independent_set)
+        # print(f"Node {node.id} -> {node.status}")
 
-            previous_independent_set = node.independent_set.copy()
-            node.update_independent_set(graph)
+        #Check if state switch possible for any node, otherwise terminate
+        if all(["locked" == node.status or "blocked" == node.status for node in nodes]):
+            stable = True
+            for id in range(num_nodes):
+                stable = stable and nodes[id].status == get_state(
+                    graph, id, independent_set
+                )
 
-            if previous_independent_set != node.independent_set:
-                stable = False
+            if stable:
+                break  # System is in stable state
 
-        if stable:
-            break
-
-    print(f"System stabilized in {rounds} rounds.")
-    max_independent_set = set()
-    for node in nodes:
-        max_independent_set |= node.independent_set
+    print(f"System stabilized in {rounds} steps.")
+    max_independent_set = set([n.id for n in nodes if n.status == "locked"])
+    visualize(graph, nodes, rounds)
     return max_independent_set
 
 
@@ -93,7 +102,7 @@ def gen_graph(num_vertices=10):
     return graph
 
 
-def visualize(g, in_set):
+def visualize(g, nodes, round, id=None):
     # Generate a random graph with 10 vertices
     num_vertices = len(g)
     graph = nx.Graph()
@@ -108,31 +117,36 @@ def visualize(g, in_set):
     #             graph.add_edge(i, j)
 
     for v in g:
-        print(v, end=": ")
+        # print(v, end=": ")
         for e in g[v]:
-            print(f"{(v,e)}", end=" ")
+            # print(f"{(v,e)}", end=" ")
             graph.add_edge(v, e)
-        print()
+        # print()
 
     # Visualize the graph
     pos = nx.spring_layout(graph)
-    node_color = "lightblue"
-    node_color_is = "red"
+
     edge_color = "gray"
     node_alpha = 0.7
     edge_alpha = 0.3
 
-    color_map = [node_color] * num_vertices
-    for n in in_set:
-        color_map[n] = node_color_is
+    color_map = [colors[n.status] for n in nodes]
 
+    print(f"f{(color_map.count('red'),color_map.count('lightblue'),color_map.count('green')+color_map.count('gray'))}")
     plt.figure(figsize=(8, 6))
     nx.draw_networkx_nodes(graph, pos, node_color=color_map, alpha=node_alpha)
     nx.draw_networkx_edges(graph, pos, edge_color=edge_color, alpha=edge_alpha)
     nx.draw_networkx_labels(graph, pos)
-    plt.title("Random Graph Visualization")
     plt.axis("off")
-    plt.savefig("graph.png")
+    if id:
+        plt.title(f"Graph Visualization - step: {round} node: {id} f{(color_map.count('red'),color_map.count('lightblue'),color_map.count('green')+color_map.count('gray'))}")
+        plt.savefig(f"out/graph_step{round}.png")
+    else:
+        plt.title(
+            f"Graph Visualization - step: {round} STABILIZED{(color_map.count('red'),color_map.count('lightblue'),color_map.count('green')+color_map.count('gray'))}"
+        )
+        plt.savefig(f"out/graph_stabilized.png")
+    plt.clf()
 
 
 # Example usage
@@ -206,10 +220,9 @@ graph = {
     5: [3, 4, 6, 7],
     6: [5, 8],
     7: [5, 8],
-    8: [6, 7]
+    8: [6, 7],
 }
 max_independent_set = self_stabilizing_max_independent_set(graph)
-visualize(graph, max_independent_set)
 # visualize(graph, max_independent_set)
 
 print("Maximum Independent Set:", max_independent_set)
