@@ -19,13 +19,15 @@ def calculate_state_probability(P,  num_steps, start_state=0, random_state=False
     
     if random_state:
         state_vector = np.ones(n) / n
-
-    for _ in range(num_steps):
-        state_vector = np.dot(state_vector, P)
+    # breakpoint()
+    power = np.linalg.matrix_power(P, num_steps)
+    state_vector = np.dot(state_vector, power)
+    # for _ in range(num_steps):
+    #     state_vector = np.dot(state_vector, P)
 
     return state_vector
 
-# Define the transition matrix P
+# transition matrix P
 P = np.array([[0, 3/10, 1/10, 3/5],
               [1/10, 1/10, 7/10, 1/10],
               [1/10, 7/10, 1/10, 1/10],
@@ -64,7 +66,10 @@ def find_min_steps(P, epsilon_values):
     while len(epsilon_values) > 0:
         state_probability = calculate_state_probability(P, num_steps)
         max_difference = np.max(np.abs(state_probability - stationary_distribution))
-
+        # print(f'Step:{num_steps}')
+        # print(state_probability)
+        # print(stationary_distribution)
+        # print(f'Max diff: {max_difference}')
         if max_difference <= epsilon_values[0]:
             min_steps[epsilon_values[0]] = num_steps
             epsilon_values.pop(0)
@@ -76,7 +81,6 @@ def find_min_steps(P, epsilon_values):
 # Calculate the stationary distribution
 stationary_distribution = calculate_state_probability(P, 1000)
 
-# Define the epsilon values
 epsilon_values = [1/10, 1/100, 1/1000]
 
 # Find the minimum steps for each epsilon value

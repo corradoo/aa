@@ -22,14 +22,35 @@ użytkowników i wprowadzeniu pewnej losowości w proces nawigacji po stronach i
 
 
 import numpy as np
+from scipy.linalg import solve
 
 
-def calculate_stationary_distribution(PG, alpha):
-    n = PG.shape[0]
+def calculate_state_probability(P, num_steps, alpha, start_state=0, random_state=False):
+    n = P.shape[0]
+    state_vector = np.zeros(n)
+    state_vector[start_state] = 1
+
     Jn = np.ones((n, n))
-    MG = (1 - alpha) * PG + alpha * (1 / n) * Jn
+    MG = (1 - alpha) * P + alpha * (1 / n) * Jn
 
-    breakpoint()
+    if random_state:
+        state_vector = np.ones(n) / n
+    # breakpoint()
+    power = np.linalg.matrix_power(MG, num_steps)
+    state_vector = np.dot(state_vector, power)
+    # for _ in range(num_steps):
+    #     state_vector = np.dot(state_vector, P)
+
+    return state_vector
+
+
+def calculate_stationary_distribution(P, alpha):
+    n = P.shape[0]
+    Jn = np.ones((n, n))
+    MG = (1 - alpha) * P + alpha * (1 / n) * Jn
+
+    if alpha == 0:
+        MG = P
     # Wektory i wartości własne
     eigenvalues, eigenvectors = np.linalg.eig(MG.T)
 
@@ -46,6 +67,26 @@ def calculate_stationary_distribution(PG, alpha):
 
     return stationary_distribution
 
+def calculate_stationary_distribution_many(P, alpha):
+    n = P.shape[0]
+    Jn = np.ones((n, n))
+    MG = (1 - alpha) * P + alpha * (1 / n) * Jn
+
+    if alpha == 0:
+        MG = P
+    # Wektory i wartości własne
+    eigenvalues, eigenvectors = np.linalg.eig(MG.T)
+
+    # Znajdź wartość własną najbliższą 1
+    stationary_indexes = np.where(np.isclose(eigenvalues,1))[0]
+
+    # breakpoint()
+    stationary_distribution = np.zeros(n)
+    for i in stationary_indexes:
+        stationary_distribution += np.abs(np.real(np.transpose(eigenvectors[:, i])))
+        stationary_distribution /= np.sum(stationary_distribution)
+
+    return stationary_distribution
 
 # Define the directed graph G and its transition matrix PG
 PG = np.array(
@@ -79,4 +120,6 @@ for alpha in alpha_values:
     print(f"Alpha = {alpha}:")
     print(f"PG:\t{stationary_distribution}")
     print(f"PG2:\t{stationary_distribution2}")
+    print(f"PG2(MC):\t{calculate_state_probability(PG2,100,alpha, random_state=True)}")
+    print(f"PG2(many):\t{calculate_stationary_distribution_many(PG2,alpha)}")
     print()
